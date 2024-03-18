@@ -1,0 +1,288 @@
+openapi: 3.0.3
+info:
+  title: Demo Transaction System APIs
+  description: APIs for creating account, retrieving account details and amount transactions to demonstrate a simple banking microservice
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:8080/api/v1'
+tags:
+  - name: Demo Transaction System
+    description: "Demo Banking Transaction System"
+paths:
+  /users:
+    post:
+      summary: Sign up a new user
+      operationId: signUpUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: User signed up successfully
+        '400':
+          description: Invalid request, user already exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions:
+    post:
+      summary: Login with email and password
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: User logged in successfully. JWT token provided in response body.
+          content:
+            application/json:
+              schema:
+                type: string
+                example: "Generated_JWT_Token"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /accounts:
+    post:
+      summary: Create a new account
+      operationId: createAccount
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '200':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetails'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized. JWT token missing or invalid. email in create request is not same as logged in user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Retrieve all accounts for a user
+      operationId: retrieveAllAccount
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All accounts are retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountDetails'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized. JWT token is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /accounts/{accountId}:
+    get:
+      summary: Retrieve details of an account by accountId
+      operationId: retrieveAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account details retrieved successfully
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/AccountDetails'
+        '401':
+          description: Unauthorized. JWT token missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /accounts/transactions:
+    post:
+      summary: Transfer amount between accounts
+      operationId: transferAmount
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Amount transferred successfully
+          content:
+            application/json:
+              schema:
+                  $ref: '#/components/schemas/TransactionDetails'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized. JWT token missing or invalid. User is not allowed to transact if IBAN does not belong to him
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    SignUpRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+          - email
+          - name
+          - openingBalance
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - name
+
+    CreateAccountRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        openingBalance:
+          type: number
+          minimum: 0
+      required:
+        - email
+        - name
+        - openingBalance
+
+    TransactionRequest:
+      type: object
+      properties:
+        senderIban:
+          type: string
+          pattern: '^[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{10}$'
+          description: International Bank Account Number (IBAN) format
+        receiverIban:
+          type: string
+          pattern: '^[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{10}$'
+          description: International Bank Account Number (IBAN) format
+        amount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+        description:
+          type: string
+      required:
+        - senderIban
+        - receiverIban
+        - transferAmount
+
+    AccountDetails:
+      type: object
+      properties:
+          accountId:
+            type: string
+          iban:
+            type: string
+          name:
+            type: string
+          emailId:
+            type: string
+          balance:
+            type: number
+
+    TransactionDetails:
+        type: object
+        properties:
+          senderIban:
+            type: string
+          receiverIban:
+            type: string
+          amount:
+            type: number
+          status:
+            type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

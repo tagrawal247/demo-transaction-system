@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  mongodemo:
+    image: mongo:latest
+    container_name: "mongodemo"
+    ports:
+      - 27017:27017
+  demotransactionsystem:
+    image: demotransactionsystem:latest
+    container_name: "demotransactionsystem"
+    ports:
+      - 8080:8080
+    links:
+      - mongodemo
